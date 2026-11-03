@@ -74,6 +74,10 @@ export const SOORT_LABELS_SHORT: Record<Woordsoort, string> = {
   werkwoord: 'Werkwoord',
 };
 
+/**
+ * Palet voor quizknoppen / theorie (gespiegeld in CSS).
+ * Speelblokken gebruiken TILE_COLOR — geen spoiler van de woordsoort.
+ */
 export const SOORT_COLORS: Record<Woordsoort, string> = {
   zelfstandig: '#3d6b8c',
   lidwoord: '#c9a227',
@@ -87,18 +91,9 @@ export const SOORT_COLORS: Record<Woordsoort, string> = {
   werkwoord: '#c45c48',
 };
 
-export const SOORT_COLORS_LIGHT: Record<Woordsoort, string> = {
-  zelfstandig: '#6a9bb8',
-  lidwoord: '#e0c04a',
-  bijvoeglijk: '#6bb894',
-  voornaamwoord: '#9a7eb8',
-  bijwoord: '#e09a5a',
-  telwoord: '#4abab0',
-  voegwoord: '#b07a5a',
-  voorzetsel: '#7a9bc5',
-  tussenwerpsel: '#d88aa4',
-  werkwoord: '#e07a68',
-};
+/** Neutrale blokkleur op het bord (woordsoort blijft verborgen tot de Taal-Check). */
+export const TILE_COLOR = '#5a7a72';
+export const TILE_COLOR_LIGHT = '#7a9a92';
 
 export const COLS = 10;
 export const ROWS = 20;

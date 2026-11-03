@@ -3,9 +3,8 @@ import type { Piece } from './Piece';
 import {
   COLS,
   ROWS,
-  SOORT_COLORS,
-  SOORT_COLORS_LIGHT,
-  type Woordsoort,
+  TILE_COLOR,
+  TILE_COLOR_LIGHT,
 } from './types';
 
 export class Renderer {
@@ -77,8 +76,8 @@ export class Renderer {
         if (!c.filled) continue;
         if (c.indestructible) {
           this.drawWall(x, y);
-        } else if (c.soort) {
-          this.drawTile(x, y, c.soort, c.woord, false);
+        } else if (c.filled) {
+          this.drawTile(x, y, c.woord, false);
         }
       }
     }
@@ -105,12 +104,12 @@ export class Renderer {
         ghost.y = gy;
         for (const { x, y } of ghost.cells()) {
           if (y < 0) continue;
-          this.drawTile(x, y, active.soort, null, true);
+          this.drawTile(x, y, null, true);
         }
       }
       for (const { x, y } of active.cells()) {
         if (y < 0) continue;
-        this.drawTile(x, y, active.soort, active.woord, false);
+        this.drawTile(x, y, active.woord, false);
       }
     }
   }
@@ -118,7 +117,6 @@ export class Renderer {
   private drawTile(
     x: number,
     y: number,
-    soort: Woordsoort,
     woord: string | null,
     ghost: boolean,
   ): void {
@@ -133,8 +131,8 @@ export class Renderer {
     }
 
     const grad = ctx.createLinearGradient(px, py, px, py + cell);
-    grad.addColorStop(0, SOORT_COLORS_LIGHT[soort]);
-    grad.addColorStop(1, SOORT_COLORS[soort]);
+    grad.addColorStop(0, TILE_COLOR_LIGHT);
+    grad.addColorStop(1, TILE_COLOR);
     ctx.fillStyle = grad;
     roundRect(ctx, px + inset, py + inset, cell - inset * 2, cell - inset * 2, r);
     ctx.fill();

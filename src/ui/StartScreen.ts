@@ -275,7 +275,7 @@ export class StartScreen {
             <li>Vul een rij om een <strong>Taal-Check</strong> te starten.</li>
             <li>Je ziet een <strong>zin</strong> met een gemarkeerd woord — kies de juiste woordsoort.</li>
             <li><strong>Goed</strong> antwoord: de rij verdwijnt en je scoort punten.</li>
-            <li><strong>Fout</strong> antwoord: de rij wordt een grijze muur en het woord komt op je foutenlijst.</li>
+            <li><strong>Fout</strong> antwoord: je ziet meteen het juiste antwoord, de rij wordt een grijze muur en het woord komt op je foutenlijst.</li>
             <li><strong>Oefen met fouten</strong> speelt vooral met die woorden; bij te weinig fouten vullen we aan.</li>
             <li><strong>Perfect Match</strong> en <strong>Grammatica-Chain</strong> geven combo-bonussen.</li>
             <li><strong>Reeks</strong>: meerdere juiste lijnen achter elkaar geeft +10 extra per treffer en een viering.</li>

@@ -32,7 +32,16 @@ import { submitGroupScore } from '../online/groups';
 const WORDS = wordsData as WordEntry[];
 export type PlayMode = 'normal' | 'practice';
 
+interface QuizGroup {
+  woord: string;
+  soort: Woordsoort;
+  rows: number[];
+}
+
 interface PendingQuiz {
+  /** Unieke vragen (zelfde woord over meerdere rijen = één vraag). */
+  groups: QuizGroup[];
+  /** Alle lijnen (voor grammatica-chain / clear), gesorteerd onder→boven. */
   lines: LineInfo[];
   index: number;
   results: boolean[];
@@ -491,33 +500,36 @@ export class Game {
   }
 
   private beginQuiz(lines: LineInfo[], perfectRows: number[]): void {
+    const sorted = [...lines].sort((a, b) => b.row - a.row);
     this.pending = {
-      lines: [...lines].sort((a, b) => b.row - a.row),
+      groups: groupQuizLines(sorted),
+      lines: sorted,
       index: 0,
       results: [],
       perfectRows,
     };
     this.state = 'quiz';
-    this.renderer.highlightRows = new Set(lines.map((l) => l.row));
+    this.renderer.highlightRows = new Set(sorted.map((l) => l.row));
     this.askNext();
   }
 
   private askNext(): void {
     if (!this.pending) return;
-    const { lines, index } = this.pending;
-    if (index >= lines.length) {
+    const { groups, index } = this.pending;
+    if (index >= groups.length) {
       this.finishQuiz();
       return;
     }
-    const line = lines[index];
-    this.renderer.highlightRows = new Set([line.row]);
+    const group = groups[index];
+    this.renderer.highlightRows = new Set(group.rows);
     const zin =
-      this.wordPool.find((w) => w.woord === line.woord)?.zin ??
-      WORDS.find((w) => w.woord === line.woord)?.zin;
+      this.wordPool.find((w) => w.woord === group.woord)?.zin ??
+      WORDS.find((w) => w.woord === group.woord)?.zin;
     this.quiz.show(
-      line.woord,
+      group.woord,
+      group.soort,
       index,
-      lines.length,
+      groups.length,
       (answer) => this.onQuizAnswer(answer),
       this.settings.quizTimeMs,
       zin,
@@ -526,41 +538,41 @@ export class Game {
 
   private onQuizAnswer(answer: Woordsoort | null): void {
     if (!this.pending) return;
-    const line = this.pending.lines[this.pending.index];
-    const ok = answer !== null && answer === line.soort;
+    const group = this.pending.groups[this.pending.index];
+    const ok = answer !== null && answer === group.soort;
     this.pending.results.push(ok);
 
     if (ok) {
       this.session.correctAnswers += 1;
-      this.pendingStreakBonus += this.registerCorrectLines(1);
-      recordCorrectAnswer(line.woord);
-      this.toast(`Goed — ${line.woord}`);
+      this.pendingStreakBonus += this.registerCorrectLines(group.rows.length);
+      recordCorrectAnswer(group.woord);
     } else {
       this.correctStreak = 0;
       this.session.wrongAnswers += 1;
-      this.session.wallsCreated += 1;
-      recordWrongAnswer(line.woord, line.soort, answer);
-      this.renderer.flashWallRow = line.row;
-      this.toast(`Fout — grijze muur`);
-      this.board.makeWall(line.row);
+      this.session.wallsCreated += group.rows.length;
+      recordWrongAnswer(group.woord, group.soort, answer);
+      for (const row of group.rows) {
+        this.board.makeWall(row);
+      }
+      this.renderer.flashWallRow = group.rows[0] ?? null;
       window.setTimeout(() => {
         this.renderer.flashWallRow = null;
       }, 400);
     }
 
     this.pending.index++;
-    window.setTimeout(() => this.askNext(), ok ? 180 : 420);
+    window.setTimeout(() => this.askNext(), 120);
   }
 
   private finishQuiz(): void {
     if (!this.pending) return;
-    const { lines, results } = this.pending;
+    const { lines, groups, results } = this.pending;
     this.quiz.hide();
     this.renderer.highlightRows.clear();
 
     const clearRows: number[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      if (results[i]) clearRows.push(lines[i].row);
+    for (let i = 0; i < groups.length; i++) {
+      if (results[i]) clearRows.push(...groups[i].rows);
     }
 
     const streakBonus = this.pendingStreakBonus;
@@ -715,4 +727,21 @@ export class Game {
   private draw(): void {
     this.renderer.draw(this.board, this.active);
   }
+}
+
+/** Zelfde woord op meerdere volle rijen → één Taal-Check-vraag. */
+function groupQuizLines(lines: LineInfo[]): QuizGroup[] {
+  const groups: QuizGroup[] = [];
+  const byKey = new Map<string, QuizGroup>();
+  for (const line of lines) {
+    const key = `${line.woord}\0${line.soort}`;
+    let group = byKey.get(key);
+    if (!group) {
+      group = { woord: line.woord, soort: line.soort, rows: [] };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.rows.push(line.row);
+  }
+  return groups;
 }
