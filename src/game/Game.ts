@@ -19,6 +19,7 @@ import {
 import {
   buildPracticePool,
   emptySession,
+  filterWordsByEnabledSoorten,
   getSettings,
   recordCorrectAnswer,
   recordGameEnd,
@@ -153,10 +154,12 @@ export class Game {
     });
 
     this.bindTouch(this.touchBar);
-    window.addEventListener('resize', () => {
+    const onViewportResize = (): void => {
       this.renderer.resize();
       this.draw();
-    });
+    };
+    window.addEventListener('resize', onViewportResize);
+    window.visualViewport?.addEventListener('resize', onViewportResize);
     window.addEventListener('keydown', this.onGlobalKey);
 
     this.input.setHandler((a) => this.onAction(a));
@@ -244,6 +247,9 @@ export class Game {
     this.settings = getSettings();
     this.renderer.showGhost = this.settings.showGhost;
     this.shell.classList.toggle('always-touch', this.settings.alwaysTouch);
+    this.quiz.setOptions(this.settings.enabledSoorten);
+    this.renderer.resize();
+    this.draw();
   }
 
   private bindTouch(bar: HTMLElement): void {
@@ -296,8 +302,13 @@ export class Game {
     this.applySettings();
     this.playMode = mode;
 
+    const activeWords = filterWordsByEnabledSoorten(
+      WORDS,
+      this.settings.enabledSoorten,
+    );
+
     if (mode === 'practice') {
-      const built = buildPracticePool(WORDS);
+      const built = buildPracticePool(activeWords);
       this.wordPool = built.pool;
       this.hud.setPracticeMode(
         true,
@@ -311,8 +322,15 @@ export class Game {
           : `Oefenmodus: ${built.fromMistakes} fouten`,
       );
     } else {
-      this.wordPool = WORDS;
+      this.wordPool = activeWords.length > 0 ? activeWords : WORDS;
       this.hud.setPracticeMode(false);
+      if (this.settings.enabledSoorten.length < 10) {
+        this.toast(
+          `${this.settings.enabledSoorten.length} woordsoort${
+            this.settings.enabledSoorten.length === 1 ? '' : 'en'
+          } actief`,
+        );
+      }
     }
 
     this.board.reset();

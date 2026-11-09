@@ -6,8 +6,6 @@ import {
   WOORDSOORTEN,
 } from '../game/types';
 
-const OPTIONS = WOORDSOORTEN;
-
 export class QuizOverlay {
   readonly el: HTMLElement;
   private questionEl: HTMLElement;
@@ -27,6 +25,7 @@ export class QuizOverlay {
   private paused = false;
   private revealing = false;
   private correctSoort: Woordsoort | null = null;
+  private options: Woordsoort[] = [...WOORDSOORTEN];
 
   constructor(root: HTMLElement) {
     this.el = document.createElement('div');
@@ -53,8 +52,23 @@ export class QuizOverlay {
     this.progressEl = this.el.querySelector('#quiz-progress')!;
     this.revealEl = this.el.querySelector('#quiz-reveal')!;
 
-    for (let i = 0; i < OPTIONS.length; i++) {
-      const soort = OPTIONS[i];
+    this.renderButtons(this.options);
+  }
+
+  /** Welke antwoordopties tonen (volgorde = toetsen 1–9, 0). */
+  setOptions(soorten: readonly Woordsoort[]): void {
+    const next =
+      soorten.length > 0
+        ? WOORDSOORTEN.filter((s) => soorten.includes(s))
+        : [...WOORDSOORTEN];
+    this.options = next.length > 0 ? next : [...WOORDSOORTEN];
+    this.renderButtons(this.options);
+  }
+
+  private renderButtons(options: readonly Woordsoort[]): void {
+    this.buttonsEl.replaceChildren();
+    for (let i = 0; i < options.length; i++) {
+      const soort = options[i];
       const keyLabel = i === 9 ? '0' : String(i + 1);
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -117,15 +131,15 @@ export class QuizOverlay {
 
     this.keyHandler = (e: KeyboardEvent) => {
       if (this.paused || this.revealing) return;
-      if (e.key === '0') {
+      if (e.key === '0' && this.options.length >= 10) {
         e.preventDefault();
-        this.submit(OPTIONS[9]);
+        this.submit(this.options[9]);
         return;
       }
       const n = Number(e.key);
-      if (n >= 1 && n <= 9) {
+      if (n >= 1 && n <= 9 && n <= this.options.length) {
         e.preventDefault();
-        this.submit(OPTIONS[n - 1]);
+        this.submit(this.options[n - 1]);
       }
     };
     window.addEventListener('keydown', this.keyHandler);

@@ -264,8 +264,26 @@ export class StartScreen {
               <span>Touch-knoppen altijd tonen</span>
               <input type="checkbox" name="alwaysTouch" />
             </label>
+            <fieldset class="setting-fieldset">
+              <legend>Woordsoorten</legend>
+              <p class="setting-fieldset-hint">
+                Zet soorten aan of uit om apart te oefenen, of om stukken nog uit te schakelen.
+              </p>
+              <div class="soort-toggle-actions">
+                <button type="button" class="text-btn" id="soorten-all">Alles aan</button>
+                <button type="button" class="text-btn" id="soorten-none">Alles uit</button>
+              </div>
+              <div class="soort-toggle-grid" id="soort-toggles">
+                ${WOORDSOORTEN.map(
+                  (s) => `<label class="soort-toggle soort-${s}">
+                    <input type="checkbox" name="enabledSoort" value="${s}" />
+                    <span>${SOORT_LABELS[s]}</span>
+                  </label>`,
+                ).join('')}
+              </div>
+            </fieldset>
           </form>
-          <p class="menu-hint">Wijzigingen worden meteen opgeslagen.</p>
+          <p class="menu-hint">Wijzigingen worden meteen opgeslagen. Minstens één woordsoort blijft aan.</p>
         </section>
 
         <section class="start-panel hidden" data-panel="help">
@@ -277,6 +295,7 @@ export class StartScreen {
             <li><strong>Goed</strong> antwoord: de rij verdwijnt en je scoort punten.</li>
             <li><strong>Fout</strong> antwoord: je ziet meteen het juiste antwoord, de rij wordt een grijze muur en het woord komt op je foutenlijst.</li>
             <li><strong>Oefen met fouten</strong> speelt vooral met die woorden; bij te weinig fouten vullen we aan.</li>
+            <li>Via <strong>Instellingen</strong> kun je woordsoorten aan- of uitzetten om gericht te oefenen.</li>
             <li><strong>Perfect Match</strong> en <strong>Grammatica-Chain</strong> geven combo-bonussen.</li>
             <li><strong>Reeks</strong>: meerdere juiste lijnen achter elkaar geeft +10 extra per treffer en een viering.</li>
           </ul>
@@ -313,11 +332,19 @@ export class StartScreen {
       const go = t.getAttribute('data-go') as StartScreenAction | null;
       if (nav) void this.showPanel(nav);
       if (go === 'newGame' || go === 'practiceGame') {
-        if (go === 'practiceGame' && getActiveMistakes().length === 0) {
-          alert(
-            'Je hebt nog geen actieve fouten. Speel eerst een gewoon spel — foute Taal-Checks komen hier terecht.',
+        if (go === 'practiceGame') {
+          const enabled = new Set(getSettings().enabledSoorten);
+          const practiceActive = getActiveMistakes().filter((m) =>
+            enabled.has(m.soort),
           );
-          return;
+          if (practiceActive.length === 0) {
+            alert(
+              getActiveMistakes().length === 0
+                ? 'Je hebt nog geen actieve fouten. Speel eerst een gewoon spel — foute Taal-Checks komen hier terecht.'
+                : 'Geen fouten binnen de actieve woordsoorten. Zet meer soorten aan in Instellingen, of speel eerst met die soorten.',
+            );
+            return;
+          }
         }
         void this.persistNameFromInput();
         this.onAction?.(go);
@@ -395,7 +422,37 @@ export class StartScreen {
     });
 
     const form = this.el.querySelector('#settings-form') as HTMLFormElement;
-    form.addEventListener('change', () => {
+    form.addEventListener('change', (e) => {
+      const target = e.target as HTMLInputElement | null;
+      if (
+        target?.name === 'enabledSoort' &&
+        !target.checked &&
+        this.selectedSoorten(form).length === 0
+      ) {
+        target.checked = true;
+        return;
+      }
+      this.persistSettings(form);
+      this.onAction?.('settingsChanged');
+    });
+
+    this.el.querySelector('#soorten-all')!.addEventListener('click', () => {
+      for (const input of form.querySelectorAll<HTMLInputElement>(
+        'input[name="enabledSoort"]',
+      )) {
+        input.checked = true;
+      }
+      this.persistSettings(form);
+      this.onAction?.('settingsChanged');
+    });
+
+    this.el.querySelector('#soorten-none')!.addEventListener('click', () => {
+      const boxes = [
+        ...form.querySelectorAll<HTMLInputElement>('input[name="enabledSoort"]'),
+      ];
+      boxes.forEach((input, i) => {
+        input.checked = i === 0;
+      });
       this.persistSettings(form);
       this.onAction?.('settingsChanged');
     });
@@ -442,15 +499,19 @@ export class StartScreen {
     );
     hs.textContent = parts.join(' · ');
 
-    const practiceDisabled = active.length === 0;
+    const enabled = new Set(settings.enabledSoorten);
+    const practiceActive = active.filter((m) => enabled.has(m.soort));
+    const practiceDisabled = practiceActive.length === 0;
     for (const id of ['practice-btn', 'practice-from-mistakes']) {
       const btn = this.el.querySelector(`#${id}`) as HTMLButtonElement;
       btn.disabled = practiceDisabled;
       btn.title = practiceDisabled
-        ? 'Nog geen fouten — speel eerst een gewoon spel'
-        : active.length < PRACTICE_MIN_WORDS
-          ? `Start met ${active.length} fouten + aanvulling tot ${PRACTICE_MIN_WORDS} woorden`
-          : `Oefen met ${active.length} fouten`;
+        ? active.length > 0
+          ? 'Geen fouten binnen de actieve woordsoorten — zet meer soorten aan of speel eerst'
+          : 'Nog geen fouten — speel eerst een gewoon spel'
+        : practiceActive.length < PRACTICE_MIN_WORDS
+          ? `Start met ${practiceActive.length} fouten + aanvulling tot ${PRACTICE_MIN_WORDS} woorden`
+          : `Oefen met ${practiceActive.length} fouten`;
     }
 
     const summary = this.el.querySelector('#mistakes-summary')!;
@@ -551,9 +612,31 @@ export class StartScreen {
       settings.showGhost;
     (form.elements.namedItem('alwaysTouch') as HTMLInputElement).checked =
       settings.alwaysTouch;
+    const enabled = new Set(settings.enabledSoorten);
+    for (const input of form.querySelectorAll<HTMLInputElement>(
+      'input[name="enabledSoort"]',
+    )) {
+      input.checked = enabled.has(input.value as Woordsoort);
+    }
+  }
+
+  private selectedSoorten(form: HTMLFormElement): Woordsoort[] {
+    return [
+      ...form.querySelectorAll<HTMLInputElement>(
+        'input[name="enabledSoort"]:checked',
+      ),
+    ].map((input) => input.value as Woordsoort);
   }
 
   private persistSettings(form: HTMLFormElement): void {
+    let enabledSoorten = this.selectedSoorten(form);
+    if (enabledSoorten.length === 0) {
+      enabledSoorten = [...WOORDSOORTEN];
+      this.fillSettings({
+        ...getSettings(),
+        enabledSoorten,
+      });
+    }
     saveSettings({
       quizTimeMs: Number(
         (form.elements.namedItem('quizTimeMs') as HTMLSelectElement).value,
@@ -565,6 +648,7 @@ export class StartScreen {
         .checked,
       alwaysTouch: (form.elements.namedItem('alwaysTouch') as HTMLInputElement)
         .checked,
+      enabledSoorten,
     });
   }
 

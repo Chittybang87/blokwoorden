@@ -6,6 +6,8 @@ export interface Settings {
   showGhost: boolean;
   alwaysTouch: boolean;
   startLevel: number;
+  /** Woordsoorten die in spel en quiz meedoen. */
+  enabledSoorten: Woordsoort[];
 }
 
 export interface Stats {
@@ -70,7 +72,18 @@ const DEFAULT_SETTINGS: Settings = {
   showGhost: true,
   alwaysTouch: false,
   startLevel: 1,
+  enabledSoorten: [...WOORDSOORTEN],
 };
+
+const SOORT_SET = new Set<string>(WOORDSOORTEN);
+
+function normalizeEnabledSoorten(raw: unknown): Woordsoort[] {
+  const fromArray = Array.isArray(raw)
+    ? raw.filter((s): s is Woordsoort => typeof s === 'string' && SOORT_SET.has(s))
+    : [];
+  const unique = WOORDSOORTEN.filter((s) => fromArray.includes(s));
+  return unique.length > 0 ? unique : [...WOORDSOORTEN];
+}
 
 const DEFAULT_STATS: Stats = {
   gamesPlayed: 0,
@@ -135,14 +148,28 @@ export function getSettings(): Settings {
   if (!QUIZ_TIME_OPTIONS.has(settings.quizTimeMs)) {
     settings.quizTimeMs = DEFAULT_SETTINGS.quizTimeMs;
   }
+  settings.enabledSoorten = normalizeEnabledSoorten(settings.enabledSoorten);
   return settings;
 }
 
 export function saveSettings(partial: Partial<Settings>): Settings {
   const data = load();
-  data.settings = { ...data.settings, ...partial };
+  const next = { ...data.settings, ...partial };
+  if (partial.enabledSoorten !== undefined) {
+    next.enabledSoorten = normalizeEnabledSoorten(partial.enabledSoorten);
+  }
+  data.settings = next;
   save(data);
-  return { ...data.settings };
+  return getSettings();
+}
+
+/** Woorden waarvan de woordsoort in de instellingen aan staat. */
+export function filterWordsByEnabledSoorten(
+  words: WordEntry[],
+  enabledSoorten: readonly Woordsoort[] = getSettings().enabledSoorten,
+): WordEntry[] {
+  const allowed = new Set(enabledSoorten);
+  return words.filter((w) => allowed.has(w.soort));
 }
 
 export function getStats(): Stats {
@@ -233,7 +260,8 @@ export function buildPracticePool(
   allWords: WordEntry[],
   minSize = PRACTICE_MIN_WORDS,
 ): { pool: WordEntry[]; fromMistakes: number; padded: number } {
-  const active = getActiveMistakes();
+  const allowedSoorten = new Set(allWords.map((w) => w.soort));
+  const active = getActiveMistakes().filter((m) => allowedSoorten.has(m.soort));
   const seen = new Set<string>();
   const pool: WordEntry[] = [];
 

@@ -26,10 +26,12 @@ export class Renderer {
   }
 
   resize(): void {
-    const maxW = Math.min(420, window.innerWidth - 32);
-    const maxH = Math.min(window.innerHeight * 0.62, 640);
-    this.cell = Math.floor(
-      Math.min((maxW - this.pad * 2) / COLS, (maxH - this.pad * 2) / ROWS),
+    const { maxW, maxH } = this.availableBoardSpace();
+    this.cell = Math.max(
+      12,
+      Math.floor(
+        Math.min((maxW - this.pad * 2) / COLS, (maxH - this.pad * 2) / ROWS),
+      ),
     );
     const w = this.cell * COLS + this.pad * 2;
     const h = this.cell * ROWS + this.pad * 2;
@@ -39,6 +41,46 @@ export class Renderer {
     this.canvas.style.width = `${w}px`;
     this.canvas.style.height = `${h}px`;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  /** Ruimte voor het speelveld, rekening houdend met HUD / touch-bar / viewport. */
+  private availableBoardSpace(): { maxW: number; maxH: number } {
+    const vv = window.visualViewport;
+    const vw = vv?.width ?? window.innerWidth;
+    const vh = vv?.height ?? window.innerHeight;
+    const shell = this.canvas.closest('.shell');
+    const narrow = window.matchMedia('(max-width: 780px)').matches;
+    const landscapeShort = window.matchMedia(
+      '(max-width: 960px) and (orientation: landscape) and (max-height: 560px)',
+    ).matches;
+    const showTouch =
+      narrow ||
+      landscapeShort ||
+      Boolean(shell?.classList.contains('always-touch'));
+    const touchH = showTouch ? 56 : 0;
+
+    if (landscapeShort) {
+      const side = Math.min(220, Math.max(150, vw * 0.28));
+      return {
+        maxW: Math.min(400, vw - side - 24),
+        maxH: Math.max(140, vh - touchH - 16),
+      };
+    }
+
+    if (narrow) {
+      const brandH = 42;
+      const hudH = 108;
+      const chrome = brandH + touchH + hudH + 22;
+      return {
+        maxW: Math.min(420, vw - 14),
+        maxH: Math.max(160, vh - chrome),
+      };
+    }
+
+    return {
+      maxW: Math.min(420, vw - 32),
+      maxH: Math.min(vh * 0.7 - touchH, 640),
+    };
   }
 
   showGhost = true;
