@@ -237,6 +237,24 @@ export class StartScreen {
           <button type="button" class="back-btn" data-nav="home">← Terug</button>
           <h2 class="panel-title">Instellingen</h2>
           <form class="settings-form" id="settings-form">
+            <fieldset class="setting-fieldset">
+              <legend>Woordsoorten in het spel</legend>
+              <p class="setting-fieldset-hint">
+                Zet soorten aan of uit om apart te oefenen. Minstens één blijft aan.
+              </p>
+              <div class="soort-toggle-actions">
+                <button type="button" class="text-btn" id="soorten-all">Alles aan</button>
+                <button type="button" class="text-btn" id="soorten-none">Alles uit</button>
+              </div>
+              <div class="soort-toggle-grid" id="soort-toggles">
+                ${WOORDSOORTEN.map(
+                  (s) => `<label class="soort-toggle soort-${s}">
+                    <input type="checkbox" name="enabledSoort" value="${s}" />
+                    <span>${SOORT_LABELS[s]}</span>
+                  </label>`,
+                ).join('')}
+              </div>
+            </fieldset>
             <label class="setting-row">
               <span>Taal-Check tijd</span>
               <select name="quizTimeMs">
@@ -264,26 +282,8 @@ export class StartScreen {
               <span>Touch-knoppen altijd tonen</span>
               <input type="checkbox" name="alwaysTouch" />
             </label>
-            <fieldset class="setting-fieldset">
-              <legend>Woordsoorten</legend>
-              <p class="setting-fieldset-hint">
-                Zet soorten aan of uit om apart te oefenen, of om stukken nog uit te schakelen.
-              </p>
-              <div class="soort-toggle-actions">
-                <button type="button" class="text-btn" id="soorten-all">Alles aan</button>
-                <button type="button" class="text-btn" id="soorten-none">Alles uit</button>
-              </div>
-              <div class="soort-toggle-grid" id="soort-toggles">
-                ${WOORDSOORTEN.map(
-                  (s) => `<label class="soort-toggle soort-${s}">
-                    <input type="checkbox" name="enabledSoort" value="${s}" />
-                    <span>${SOORT_LABELS[s]}</span>
-                  </label>`,
-                ).join('')}
-              </div>
-            </fieldset>
           </form>
-          <p class="menu-hint">Wijzigingen worden meteen opgeslagen. Minstens één woordsoort blijft aan.</p>
+          <p class="menu-hint">Wijzigingen worden meteen opgeslagen.</p>
         </section>
 
         <section class="start-panel hidden" data-panel="help">
@@ -657,7 +657,8 @@ export class StartScreen {
       panel === 'records' ||
       panel === 'stats' ||
       panel === 'mistakes' ||
-      panel === 'group'
+      panel === 'group' ||
+      panel === 'settings'
     ) {
       this.refresh();
     }
