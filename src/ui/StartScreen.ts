@@ -237,14 +237,20 @@ export class StartScreen {
           <button type="button" class="back-btn" data-nav="home">← Terug</button>
           <h2 class="panel-title">Instellingen</h2>
           <form class="settings-form" id="settings-form">
-            <fieldset class="setting-fieldset">
-              <legend>Woordsoorten in het spel</legend>
+            <section class="setting-fieldset" aria-labelledby="soorten-heading">
+              <h3 id="soorten-heading" class="setting-fieldset-title">Woordsoorten in het spel</h3>
               <p class="setting-fieldset-hint">
-                Zet soorten aan of uit om apart te oefenen. Minstens één blijft aan.
+                Tik op een soort om die aan of uit te zetten. Zo oefen je gericht.
+                Minstens één soort blijft altijd aan.
               </p>
+              <p class="soort-toggle-status" id="soorten-status" aria-live="polite"></p>
               <div class="soort-toggle-actions">
-                <button type="button" class="text-btn" id="soorten-all">Alles aan</button>
-                <button type="button" class="text-btn" id="soorten-none">Alles uit</button>
+                <button type="button" class="soort-action-btn" id="soorten-all">
+                  Alles selecteren
+                </button>
+                <button type="button" class="soort-action-btn soort-action-clear" id="soorten-none">
+                  Alles deselecteren
+                </button>
               </div>
               <div class="soort-toggle-grid" id="soort-toggles">
                 ${WOORDSOORTEN.map(
@@ -254,7 +260,7 @@ export class StartScreen {
                   </label>`,
                 ).join('')}
               </div>
-            </fieldset>
+            </section>
             <label class="setting-row">
               <span>Taal-Check tijd</span>
               <select name="quizTimeMs">
@@ -430,29 +436,42 @@ export class StartScreen {
         this.selectedSoorten(form).length === 0
       ) {
         target.checked = true;
+        this.syncSoortToggleStyles(form);
+        this.updateSoortenStatus(form);
         return;
       }
+      this.syncSoortToggleStyles(form);
+      this.updateSoortenStatus(form);
       this.persistSettings(form);
       this.onAction?.('settingsChanged');
     });
 
-    this.el.querySelector('#soorten-all')!.addEventListener('click', () => {
+    this.el.querySelector('#soorten-all')!.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       for (const input of form.querySelectorAll<HTMLInputElement>(
         'input[name="enabledSoort"]',
       )) {
         input.checked = true;
       }
+      this.syncSoortToggleStyles(form);
+      this.updateSoortenStatus(form);
       this.persistSettings(form);
       this.onAction?.('settingsChanged');
     });
 
-    this.el.querySelector('#soorten-none')!.addEventListener('click', () => {
+    this.el.querySelector('#soorten-none')!.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       const boxes = [
         ...form.querySelectorAll<HTMLInputElement>('input[name="enabledSoort"]'),
       ];
+      // Minstens één soort moet aan blijven: alleen de eerste blijft geselecteerd.
       boxes.forEach((input, i) => {
         input.checked = i === 0;
       });
+      this.syncSoortToggleStyles(form);
+      this.updateSoortenStatus(form);
       this.persistSettings(form);
       this.onAction?.('settingsChanged');
     });
@@ -618,6 +637,29 @@ export class StartScreen {
     )) {
       input.checked = enabled.has(input.value as Woordsoort);
     }
+    this.syncSoortToggleStyles(form);
+    this.updateSoortenStatus(form);
+  }
+
+  private syncSoortToggleStyles(form: HTMLFormElement): void {
+    for (const input of form.querySelectorAll<HTMLInputElement>(
+      'input[name="enabledSoort"]',
+    )) {
+      input.closest('.soort-toggle')?.classList.toggle('is-off', !input.checked);
+    }
+  }
+
+  private updateSoortenStatus(form: HTMLFormElement): void {
+    const status = this.el.querySelector('#soorten-status');
+    if (!status) return;
+    const n = this.selectedSoorten(form).length;
+    const total = WOORDSOORTEN.length;
+    status.textContent =
+      n === total
+        ? `Alle ${total} woordsoorten staan aan`
+        : n === 1
+          ? `1 van ${total} woordsoorten aan`
+          : `${n} van ${total} woordsoorten aan`;
   }
 
   private selectedSoorten(form: HTMLFormElement): Woordsoort[] {

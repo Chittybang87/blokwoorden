@@ -60,6 +60,7 @@ export class Game {
   private pauseOverlay: PauseOverlay;
   private touchBar: HTMLElement;
   private shell: HTMLElement;
+  private stopTouchHolds: Array<() => void> = [];
 
   private state: GameState = 'menu';
   private resumeState: GameState = 'playing';
@@ -276,6 +277,13 @@ export class Game {
 
       let holdId: number | null = null;
       const fire = () => this.input.trigger(act);
+      const stop = () => {
+        if (holdId !== null) {
+          window.clearInterval(holdId);
+          holdId = null;
+        }
+      };
+      this.stopTouchHolds.push(stop);
 
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -285,15 +293,9 @@ export class Game {
           holdId = window.setInterval(fire, act === 'softDrop' ? 45 : 70);
         }
       });
-      const stop = () => {
-        if (holdId !== null) {
-          window.clearInterval(holdId);
-          holdId = null;
-        }
-      };
       btn.addEventListener('pointerup', stop);
       btn.addEventListener('pointercancel', stop);
-      btn.addEventListener('pointerleave', stop);
+      btn.addEventListener('lostpointercapture', stop);
     }
   }
 
@@ -454,6 +456,7 @@ export class Game {
     this.board.lock(this.active);
     this.active = null;
     this.input.setEnabled(false);
+    for (const stop of this.stopTouchHolds) stop();
     this.resolveLines();
   }
 

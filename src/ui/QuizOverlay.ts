@@ -6,6 +6,9 @@ import {
   WOORDSOORTEN,
 } from '../game/types';
 
+/** Voorkomt dat de touch/click die het blok vastzet meteen een quizantwoord triggert. */
+const ANSWER_ARM_MS = 550;
+
 export class QuizOverlay {
   readonly el: HTMLElement;
   private questionEl: HTMLElement;
@@ -17,6 +20,7 @@ export class QuizOverlay {
   private revealEl: HTMLElement;
   private timerId: number | null = null;
   private revealId: number | null = null;
+  private armId: number | null = null;
   private onAnswer: ((soort: Woordsoort | null) => void) | null = null;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private durationMs = QUIZ_TIME_MS;
@@ -24,6 +28,7 @@ export class QuizOverlay {
   private startedAt = 0;
   private paused = false;
   private revealing = false;
+  private answersArmed = false;
   private correctSoort: Woordsoort | null = null;
   private options: Woordsoort[] = [...WOORDSOORTEN];
 
@@ -98,8 +103,9 @@ export class QuizOverlay {
     this.correctSoort = correctSoort;
     this.paused = false;
     this.revealing = false;
-    this.durationMs = timeMs;
-    this.remainingMs = timeMs;
+    this.answersArmed = false;
+    this.durationMs = Math.max(5000, timeMs);
+    this.remainingMs = this.durationMs;
 
     this.revealEl.classList.add('hidden');
     this.revealEl.textContent = '';
@@ -126,11 +132,13 @@ export class QuizOverlay {
     this.progressEl.textContent =
       total > 1 ? `Vraag ${index + 1} van ${total}` : 'Rij voltooid';
     this.el.classList.remove('hidden');
-    this.setButtonsEnabled(true);
-    this.startTimer(timeMs, 100);
+    this.el.classList.add('quiz-arming');
+    this.timerFill.style.transition = 'none';
+    this.timerFill.style.width = '100%';
+    this.setButtonsEnabled(false);
 
     this.keyHandler = (e: KeyboardEvent) => {
-      if (this.paused || this.revealing) return;
+      if (this.paused || this.revealing || !this.answersArmed) return;
       if (e.key === '0' && this.options.length >= 10) {
         e.preventDefault();
         this.submit(this.options[9]);
@@ -143,18 +151,34 @@ export class QuizOverlay {
       }
     };
     window.addEventListener('keydown', this.keyHandler);
+
+    // Wacht tot de plaatsings-touch voorbij is, start daarna pas de echte denktijd.
+    this.clearArm();
+    this.armId = window.setTimeout(() => {
+      this.armId = null;
+      if (!this.isOpen || this.paused || this.revealing) return;
+      this.answersArmed = true;
+      this.el.classList.remove('quiz-arming');
+      this.setButtonsEnabled(true);
+      this.startTimer(this.durationMs, 100);
+    }, ANSWER_ARM_MS);
   }
 
   pause(): void {
     if (!this.isOpen || this.paused || this.revealing) return;
     this.paused = true;
+    this.clearArm();
     if (this.timerId !== null) {
       window.clearTimeout(this.timerId);
       this.timerId = null;
     }
-    const elapsed = performance.now() - this.startedAt;
-    this.remainingMs = Math.max(0, this.remainingMs - elapsed);
-    const pct = (this.remainingMs / this.durationMs) * 100;
+    if (this.answersArmed && this.startedAt > 0) {
+      const elapsed = performance.now() - this.startedAt;
+      this.remainingMs = Math.max(0, this.remainingMs - elapsed);
+    }
+    const pct = this.answersArmed
+      ? (this.remainingMs / this.durationMs) * 100
+      : 100;
     this.timerFill.style.transition = 'none';
     this.timerFill.style.width = `${pct}%`;
     this.setButtonsEnabled(false);
@@ -163,6 +187,19 @@ export class QuizOverlay {
   resume(): void {
     if (!this.isOpen || !this.paused || this.revealing) return;
     this.paused = false;
+    if (!this.answersArmed) {
+      this.el.classList.add('quiz-arming');
+      this.clearArm();
+      this.armId = window.setTimeout(() => {
+        this.armId = null;
+        if (!this.isOpen || this.paused || this.revealing) return;
+        this.answersArmed = true;
+        this.el.classList.remove('quiz-arming');
+        this.setButtonsEnabled(true);
+        this.startTimer(this.durationMs, 100);
+      }, ANSWER_ARM_MS);
+      return;
+    }
     this.setButtonsEnabled(true);
     if (this.remainingMs <= 0) {
       this.submit(null);
@@ -175,15 +212,18 @@ export class QuizOverlay {
   hide(): void {
     this.clearTimer();
     this.clearReveal();
+    this.clearArm();
     if (this.keyHandler) {
       window.removeEventListener('keydown', this.keyHandler);
       this.keyHandler = null;
     }
     this.el.classList.add('hidden');
+    this.el.classList.remove('quiz-arming');
     this.onAnswer = null;
     this.correctSoort = null;
     this.paused = false;
     this.revealing = false;
+    this.answersArmed = false;
     this.setButtonsEnabled(true);
   }
 
@@ -217,6 +257,13 @@ export class QuizOverlay {
     }
   }
 
+  private clearArm(): void {
+    if (this.armId !== null) {
+      window.clearTimeout(this.armId);
+      this.armId = null;
+    }
+  }
+
   private setButtonsEnabled(on: boolean): void {
     for (const btn of this.buttonsEl.querySelectorAll('button')) {
       (btn as HTMLButtonElement).disabled = !on;
@@ -224,6 +271,8 @@ export class QuizOverlay {
   }
 
   private submit(soort: Woordsoort | null): void {
+    // Timeout (soort === null) mag altijd; handmatige antwoorden pas na arm-periode.
+    if (soort !== null && !this.answersArmed) return;
     if (this.paused || this.revealing) return;
     const correct = this.correctSoort;
     if (!correct) {
