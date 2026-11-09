@@ -256,7 +256,11 @@ export class StartScreen {
                 ${WOORDSOORTEN.map(
                   (s) => `<label class="soort-toggle soort-${s}">
                     <input type="checkbox" name="enabledSoort" value="${s}" />
-                    <span>${SOORT_LABELS[s]}</span>
+                    <span class="soort-check" aria-hidden="true"></span>
+                    <span class="soort-toggle-text">
+                      <span class="soort-toggle-name">${SOORT_LABELS[s]}</span>
+                      <span class="soort-toggle-state" data-on="Aan" data-off="Uit"></span>
+                    </span>
                   </label>`,
                 ).join('')}
               </div>

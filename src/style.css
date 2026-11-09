@@ -768,42 +768,127 @@ body {
 .soort-toggle-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
 .soort-toggle {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.55rem;
   margin: 0;
-  padding: 0.55rem 0.55rem;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.72);
+  padding: 0.6rem 0.55rem;
+  min-height: 52px;
+  border-radius: 12px;
+  background: #fff;
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--ink);
   cursor: pointer;
   box-shadow:
-    inset 4px 0 0 var(--soort-accent, rgba(30, 58, 52, 0.25)),
-    inset 0 0 0 1.5px rgba(30, 58, 52, 0.08);
+    inset 5px 0 0 var(--soort-accent, #1e3a34),
+    inset 0 0 0 2px var(--soort-accent, #1e3a34);
   transition:
-    opacity 0.15s ease,
     background 0.15s ease,
-    filter 0.15s ease;
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
-.soort-toggle.is-off {
-  opacity: 0.48;
-  background: rgba(255, 255, 255, 0.35);
-  filter: grayscale(0.35);
-  box-shadow: inset 4px 0 0 rgba(30, 58, 52, 0.18);
+.soort-toggle:has(input:focus-visible) {
+  outline: 3px solid rgba(30, 58, 52, 0.45);
+  outline-offset: 2px;
 }
 
 .soort-toggle input {
-  width: 1.05rem;
-  height: 1.05rem;
-  flex-shrink: 0;
-  accent-color: var(--bg-deep);
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  pointer-events: none;
+}
+
+.soort-check {
+  flex: 0 0 auto;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 8px;
+  background: var(--soort-accent, var(--bg-deep));
+  display: grid;
+  place-items: center;
+  box-shadow: 0 1px 2px rgba(8, 20, 16, 0.2);
+}
+
+.soort-check::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.78rem;
+  margin-top: -0.14rem;
+  border: solid #fffdf8;
+  border-width: 0 0.2rem 0.2rem 0;
+  transform: rotate(40deg);
+}
+
+.soort-toggle-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.soort-toggle-name {
+  line-height: 1.2;
+  color: var(--bg-deep);
+  font-weight: 800;
+}
+
+.soort-toggle-state {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--bg-deep);
+  background: rgba(30, 58, 52, 0.1);
+  border-radius: 999px;
+  padding: 0.08rem 0.4rem;
+}
+
+.soort-toggle-state::before {
+  content: attr(data-on);
+}
+
+.soort-toggle.is-off {
+  background: rgba(243, 247, 245, 0.55);
+  box-shadow:
+    inset 5px 0 0 rgba(30, 58, 52, 0.16),
+    inset 0 0 0 2px rgba(30, 58, 52, 0.16);
+}
+
+.soort-toggle.is-off .soort-check {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px rgba(30, 58, 52, 0.35);
+}
+
+.soort-toggle.is-off .soort-check::before {
+  content: none;
+}
+
+.soort-toggle.is-off .soort-toggle-name {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.soort-toggle.is-off .soort-toggle-state {
+  color: #9a3d2f;
+  background: rgba(154, 61, 47, 0.12);
+}
+
+.soort-toggle.is-off .soort-toggle-state::before {
+  content: attr(data-off);
 }
 
 .soort-toggle.soort-zelfstandig {
