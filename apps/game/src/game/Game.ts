@@ -1,9 +1,10 @@
-import wordsData from '../data/words.json';
 import { ComboPopup } from '../ui/ComboPopup';
 import { Hud } from '../ui/Hud';
 import { PauseOverlay } from '../ui/PauseOverlay';
 import { QuizOverlay } from '../ui/QuizOverlay';
 import { StartScreen } from '../ui/StartScreen';
+import { getCachedContent, loadGameContent } from '../online/content';
+import { submitGroupScore } from '../online/groups';
 import { Board } from './Board';
 import { findPerfectMatchRows, grammarChainMultiplier } from './Grammar';
 import { Input, type InputAction } from './Input';
@@ -28,9 +29,8 @@ import {
   type Settings,
 } from './Storage';
 import type { GameState, LineInfo, WordEntry, Woordsoort } from './types';
-import { submitGroupScore } from '../online/groups';
+import { SOORT_LABELS } from './types';
 
-const WORDS = wordsData as WordEntry[];
 export type PlayMode = 'normal' | 'practice';
 
 interface QuizGroup {
@@ -82,7 +82,8 @@ export class Game {
   private session: SessionStats = emptySession();
   private settings: Settings = getSettings();
   private playMode: PlayMode = 'normal';
-  private wordPool: WordEntry[] = WORDS;
+  private allWords: WordEntry[] = getCachedContent().words;
+  private wordPool: WordEntry[] = this.allWords;
   private overEl: HTMLElement;
   private feedbackEl: HTMLElement;
 
@@ -110,8 +111,16 @@ export class Game {
             <h2 class="menu-title">Einde</h2>
             <p class="menu-lead" id="final-score">Score: 0</p>
             <p class="record-banner hidden" id="record-banner">Nieuw record!</p>
+            <div class="stat-grid session-answer-stats" id="session-answer-stats"></div>
+            <div class="session-mistakes hidden" id="session-mistakes">
+              <h3 class="panel-subtitle">Fouten deze sessie</h3>
+              <ul class="mistake-list" id="session-mistake-list"></ul>
+            </div>
             <div class="start-actions">
               <button type="button" class="primary-btn" id="again-btn">Opnieuw</button>
+              <button type="button" class="secondary-btn hidden" id="show-mistakes-btn">
+                Toon fouten
+              </button>
               <button type="button" class="secondary-btn" id="to-menu-btn">Startscherm</button>
             </div>
           </div>
@@ -139,6 +148,8 @@ export class Game {
       if (action === 'settingsChanged') this.applySettings();
     });
 
+    void this.refreshContent();
+
     this.pauseOverlay.setHandler((action) => {
       if (action === 'resume') this.resume();
       if (action === 'menu') this.quitToMenu(true);
@@ -152,6 +163,9 @@ export class Game {
     root.querySelector('#to-menu-btn')!.addEventListener('click', () => {
       this.overEl.classList.add('hidden');
       this.openMenu();
+    });
+    root.querySelector('#show-mistakes-btn')!.addEventListener('click', () => {
+      this.toggleSessionMistakes();
     });
 
     this.bindTouch(this.touchBar);
@@ -299,13 +313,27 @@ export class Game {
     }
   }
 
+  private async refreshContent(): Promise<void> {
+    const content = await loadGameContent();
+    this.allWords = content.words;
+    if (this.state === 'menu') {
+      this.wordPool = this.allWords;
+    }
+    this.startScreen.setTheoryHtml(content.theoryHtml);
+  }
+
+  private catalogWords(): WordEntry[] {
+    return this.allWords.length > 0 ? this.allWords : getCachedContent().words;
+  }
+
   start(mode: PlayMode = 'normal'): void {
     cancelAnimationFrame(this.raf);
     this.applySettings();
     this.playMode = mode;
 
+    const catalog = this.catalogWords();
     const activeWords = filterWordsByEnabledSoorten(
-      WORDS,
+      catalog,
       this.settings.enabledSoorten,
     );
 
@@ -324,7 +352,7 @@ export class Game {
           : `Oefenmodus: ${built.fromMistakes} fouten`,
       );
     } else {
-      this.wordPool = activeWords.length > 0 ? activeWords : WORDS;
+      this.wordPool = activeWords.length > 0 ? activeWords : catalog;
       this.hud.setPracticeMode(false);
       if (this.settings.enabledSoorten.length < 10) {
         this.toast(
@@ -545,7 +573,7 @@ export class Game {
     this.renderer.highlightRows = new Set(group.rows);
     const zin =
       this.wordPool.find((w) => w.woord === group.woord)?.zin ??
-      WORDS.find((w) => w.woord === group.woord)?.zin;
+      this.catalogWords().find((w) => w.woord === group.woord)?.zin;
     this.quiz.show(
       group.woord,
       group.soort,
@@ -571,6 +599,11 @@ export class Game {
       this.correctStreak = 0;
       this.session.wrongAnswers += 1;
       this.session.wallsCreated += group.rows.length;
+      this.session.mistakes.push({
+        woord: group.woord,
+        soort: group.soort,
+        chosen: answer,
+      });
       recordWrongAnswer(group.woord, group.soort, answer);
       for (const row of group.rows) {
         this.board.makeWall(row);
@@ -733,8 +766,58 @@ export class Game {
     final.textContent = `Score: ${this.score} · ${this.linesCleared} rijen · niveau ${this.level}`;
     const banner = this.overEl.querySelector('#record-banner')!;
     banner.classList.toggle('hidden', !isHighScore);
+
+    const correct = this.session.correctAnswers;
+    const wrong = this.session.wrongAnswers;
+    this.overEl.querySelector('#session-answer-stats')!.innerHTML = `
+      <div class="stat-card">
+        <span class="hud-label">Juist</span>
+        <span class="stat-value">${correct}</span>
+      </div>
+      <div class="stat-card">
+        <span class="hud-label">Fout</span>
+        <span class="stat-value">${wrong}</span>
+      </div>
+    `;
+
+    const mistakesPanel = this.overEl.querySelector('#session-mistakes')!;
+    const mistakesBtn = this.overEl.querySelector(
+      '#show-mistakes-btn',
+    ) as HTMLButtonElement;
+    mistakesPanel.classList.add('hidden');
+    mistakesBtn.textContent = 'Toon fouten';
+    mistakesBtn.classList.toggle('hidden', wrong === 0);
+
+    const list = this.overEl.querySelector('#session-mistake-list')!;
+    if (this.session.mistakes.length === 0) {
+      list.innerHTML = '<li class="empty">Geen fouten deze sessie</li>';
+    } else {
+      list.innerHTML = this.session.mistakes
+        .map((m) => {
+          const chosenLabel =
+            m.chosen === null ? 'te laat' : SOORT_LABELS[m.chosen];
+          return `<li>
+            <div>
+              <strong>${escapeHtml(m.woord)}</strong>
+              <span class="mistake-soort soort-tag soort-${m.soort}">${SOORT_LABELS[m.soort]}</span>
+            </div>
+            <em>jouw keuze: ${chosenLabel}</em>
+          </li>`;
+        })
+        .join('');
+    }
+
     this.overEl.classList.remove('hidden');
     this.startScreen.refresh();
+  }
+
+  private toggleSessionMistakes(): void {
+    const panel = this.overEl.querySelector('#session-mistakes')!;
+    const btn = this.overEl.querySelector(
+      '#show-mistakes-btn',
+    ) as HTMLButtonElement;
+    const nowHidden = panel.classList.toggle('hidden');
+    btn.textContent = nowHidden ? 'Toon fouten' : 'Verberg fouten';
   }
 
   private toast(msg: string): void {
@@ -748,6 +831,14 @@ export class Game {
   private draw(): void {
     this.renderer.draw(this.board, this.active);
   }
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 /** Zelfde woord op meerdere volle rijen → één Taal-Check-vraag. */

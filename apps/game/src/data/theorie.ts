@@ -1,33 +1,27 @@
 /** Theorie woordsoorten — lesmateriaal bij Blokwoorden. */
 
-import type { Woordsoort } from '../game/types';
+import type { TheorySection, Woordsoort } from '@blokwoorden/shared';
 
-export function theorieHtml(): string {
-  return `
-    <p class="menu-lead theory-intro">
-      De tien woordsoorten komen allemaal in het spel voor.
-      Bij een Taal-Check zie je een zin uit de oefenbundel met een gemarkeerd woord.
-    </p>
-
-    <div class="theory-list">
-      ${card(
-        '1',
-        'Zelfstandig naamwoord',
-        'zn',
-        'zelfstandig',
-        `
+const FALLBACK_SECTIONS: Omit<TheorySection, 'id' | 'active'>[] = [
+  {
+    sort_order: 1,
+    nr: '1',
+    title: 'Zelfstandig naamwoord',
+    abbr: 'zn',
+    in_game_soort: 'zelfstandig',
+    body_html: `
         <p>Benoemt personen, dieren, dingen, plaatsen, gevoelens of begrippen.</p>
         <p class="theory-ex">→ de hond, een stoel, Gent, liefde.</p>
         <p>Je kunt er meestal een lidwoord bij zetten (de, het, een).</p>
         `,
-      )}
-
-      ${card(
-        '2',
-        'Lidwoord',
-        'lw',
-        'lidwoord',
-        `
+  },
+  {
+    sort_order: 2,
+    nr: '2',
+    title: 'Lidwoord',
+    abbr: 'lw',
+    in_game_soort: 'lidwoord',
+    body_html: `
         <p>Hoort altijd bij een zelfstandig naamwoord.</p>
         <ul class="theory-bullets">
           <li><strong>Bepaald:</strong> de, het</li>
@@ -37,26 +31,26 @@ export function theorieHtml(): string {
         <p class="theory-tip">Let op: staat ‘het’ niet bij een zn, dan is het géén lidwoord
           <em>(Het wordt mooi weer)</em>.</p>
         `,
-      )}
-
-      ${card(
-        '3',
-        'Bijvoeglijk naamwoord',
-        'bn',
-        'bijvoeglijk',
-        `
+  },
+  {
+    sort_order: 3,
+    nr: '3',
+    title: 'Bijvoeglijk naamwoord',
+    abbr: 'bn',
+    in_game_soort: 'bijvoeglijk',
+    body_html: `
         <p>Zegt iets meer over een zelfstandig naamwoord.</p>
         <p class="theory-ex">→ de grote hond, een mooi huis, het rode kleed.</p>
         <p>Je kunt vaak ‘heel’ of ‘erg’ ervoor zetten: heel groot, erg lief.</p>
         `,
-      )}
-
-      ${card(
-        '4',
-        'Voornaamwoord',
-        'vnw',
-        'voornaamwoord',
-        `
+  },
+  {
+    sort_order: 4,
+    nr: '4',
+    title: 'Voornaamwoord',
+    abbr: 'vnw',
+    in_game_soort: 'voornaamwoord',
+    body_html: `
         <p>Vervangt of verwijst naar een zelfstandig naamwoord. Acht soorten:</p>
         <div class="theory-table-wrap">
           <table class="theory-table">
@@ -76,27 +70,27 @@ export function theorieHtml(): string {
           </table>
         </div>
         `,
-      )}
-
-      ${card(
-        '5',
-        'Bijwoord',
-        'bw',
-        'bijwoord',
-        `
+  },
+  {
+    sort_order: 5,
+    nr: '5',
+    title: 'Bijwoord',
+    abbr: 'bw',
+    in_game_soort: 'bijwoord',
+    body_html: `
         <p>Zegt iets over een werkwoord, bijvoeglijk naamwoord of ander bijwoord.</p>
         <p class="theory-ex">→ Hij loopt snel. – Dat is erg mooi. – We komen morgen.</p>
         <p>Antwoord op vragen als: waar, wanneer, waarom, hoe.</p>
         <p class="theory-ex">→ hier, daar, gisteren, daarom, vaak.</p>
         `,
-      )}
-
-      ${card(
-        '6',
-        'Telwoord',
-        'tw',
-        'telwoord',
-        `
+  },
+  {
+    sort_order: 6,
+    nr: '6',
+    title: 'Telwoord',
+    abbr: 'tw',
+    in_game_soort: 'telwoord',
+    body_html: `
         <p>Geeft een hoeveelheid of volgorde aan.</p>
         <div class="theory-table-wrap">
           <table class="theory-table">
@@ -112,14 +106,14 @@ export function theorieHtml(): string {
           </table>
         </div>
         `,
-      )}
-
-      ${card(
-        '7',
-        'Voegwoord',
-        'vw',
-        'voegwoord',
-        `
+  },
+  {
+    sort_order: 7,
+    nr: '7',
+    title: 'Voegwoord',
+    abbr: 'vw',
+    in_game_soort: 'voegwoord',
+    body_html: `
         <p>Verbindt woorden of zinnen.</p>
         <ul class="theory-bullets">
           <li><strong>Nevenschikkend:</strong> en, maar, want, of, dus</li>
@@ -127,38 +121,38 @@ export function theorieHtml(): string {
         </ul>
         <p class="theory-tip">Kun je de zinnen apart zetten → nevenschikkend; niet apart → onderschikkend.</p>
         `,
-      )}
-
-      ${card(
-        '8',
-        'Voorzetsel',
-        'vz',
-        'voorzetsel',
-        `
+  },
+  {
+    sort_order: 8,
+    nr: '8',
+    title: 'Voorzetsel',
+    abbr: 'vz',
+    in_game_soort: 'voorzetsel',
+    body_html: `
         <p>Geeft plaats, tijd, oorzaak, richting of middel aan.</p>
         <p class="theory-ex">→ op, onder, naast, achter, tijdens, dankzij.</p>
         <p class="theory-tip">Testzin: “De aap springt … de ton.”</p>
         `,
-      )}
-
-      ${card(
-        '9',
-        'Tussenwerpsel',
-        'twp',
-        'tussenwerpsel',
-        `
+  },
+  {
+    sort_order: 9,
+    nr: '9',
+    title: 'Tussenwerpsel',
+    abbr: 'twp',
+    in_game_soort: 'tussenwerpsel',
+    body_html: `
         <p>Drukt een gevoel of reactie uit.</p>
         <p class="theory-ex">→ Amai! Oei! Hé! Verdorie!</p>
         <p>Vaak kun je het weglaten zonder dat de zin fout is.</p>
         `,
-      )}
-
-      ${card(
-        '10',
-        'Werkwoord',
-        'ww',
-        'werkwoord',
-        `
+  },
+  {
+    sort_order: 10,
+    nr: '10',
+    title: 'Werkwoord',
+    abbr: 'ww',
+    in_game_soort: 'werkwoord',
+    body_html: `
         <p>Zegt wat iemand doet of overkomt.</p>
         <ul class="theory-bullets">
           <li><strong>Zelfstandig werkwoord (zww):</strong> heeft betekenis, kan alleen staan
@@ -190,9 +184,32 @@ export function theorieHtml(): string {
         </ol>
         <p class="theory-tip">Alle andere werkwoorden in de zin zijn hulpwerkwoorden.</p>
         `,
-      )}
+  },
+];
+
+export function theorieHtmlFromSections(
+  sections: Array<
+    Pick<TheorySection, 'nr' | 'title' | 'abbr' | 'in_game_soort' | 'body_html'>
+  >,
+): string {
+  return `
+    <p class="menu-lead theory-intro">
+      De tien woordsoorten komen allemaal in het spel voor.
+      Bij een Taal-Check zie je een zin uit de oefenbundel met een gemarkeerd woord.
+    </p>
+
+    <div class="theory-list">
+      ${sections
+        .map((s) =>
+          card(s.nr, s.title, s.abbr, s.in_game_soort, s.body_html),
+        )
+        .join('\n')}
     </div>
   `;
+}
+
+export function theorieHtml(): string {
+  return theorieHtmlFromSections(FALLBACK_SECTIONS);
 }
 
 function card(

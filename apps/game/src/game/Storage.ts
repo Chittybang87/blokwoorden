@@ -48,6 +48,13 @@ export interface MistakeEntry {
   byChoice: Partial<Record<Woordsoort | 'timeout', number>>;
 }
 
+export interface SessionMistake {
+  woord: string;
+  soort: Woordsoort;
+  /** Gekozen antwoord; null = tijd op. */
+  chosen: Woordsoort | null;
+}
+
 export interface SessionStats {
   correctAnswers: number;
   wrongAnswers: number;
@@ -55,6 +62,7 @@ export interface SessionStats {
   grammarChains: number;
   wallsCreated: number;
   bestMultiplier: number;
+  mistakes: SessionMistake[];
 }
 
 const KEY = 'blokwoorden-v1';
@@ -314,6 +322,7 @@ export function emptySession(): SessionStats {
     grammarChains: 0,
     wallsCreated: 0,
     bestMultiplier: 1,
+    mistakes: [],
   };
 }
 

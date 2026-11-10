@@ -1176,6 +1176,26 @@ body {
   white-space: nowrap;
 }
 
+.session-answer-stats {
+  margin: 0 0 1rem;
+}
+
+.session-mistakes {
+  margin: 0 0 1rem;
+  text-align: left;
+}
+
+.session-mistakes .panel-subtitle {
+  margin-top: 0;
+  text-align: center;
+}
+
+.session-mistakes .mistake-list {
+  max-height: min(40vh, 16rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .record-banner {
   margin: -0.4rem 0 1rem;
   display: inline-block;

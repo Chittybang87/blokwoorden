@@ -483,6 +483,11 @@ export class StartScreen {
     this.refresh();
   }
 
+  setTheoryHtml(html: string): void {
+    const scroll = this.el.querySelector('.theory-scroll');
+    if (scroll) scroll.innerHTML = html;
+  }
+
   setHandler(handler: (action: StartScreenAction) => void): void {
     this.onAction = handler;
   }
